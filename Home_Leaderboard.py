@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from snowflake.snowpark import Session
+from snowflake.snowpark import Session, exceptions
 import plotly.express as px
 from global_functions import get_session
 from snowflake.snowpark import functions as F
@@ -12,18 +12,27 @@ tournament = st.secrets['current_event']
 
 session = get_session()
 
+def get_data_from_snowflake(session: Session):
+  try:
+    leaderboard_display_df = session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT'])
+    picks_df = session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]]
+    selection_df = picks_df.group_by(F.col("GOLFER")).agg(F.count("ENTRY_NAME")).with_column_renamed(F.col("COUNT(ENTRY_NAME)"),"SELECTIONS")  # type: ignore
+    player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
+    player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
+    last_refresh = session.table('SCOREBOARD').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
+    return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
+  
+  except exceptions.SnowparkSQLException:
+    session = get_session()
+    get_data_from_snowflake(session)
+    leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
+    return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
 
 st.write(f"# {tournament}")
 
 # create Snowpark Dataframes
+leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
 
-leaderboard_display_df = session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT'])
-
-picks_df = session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]]
-selection_df = picks_df.group_by(F.col("GOLFER")).agg(F.count("ENTRY_NAME")).with_column_renamed(F.col("COUNT(ENTRY_NAME)"),"SELECTIONS")  # type: ignore
-player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
-player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
-last_refresh = session.table('SCOREBOARD').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
 
 # PROTOTYPE FOR SELECT AND HIGHLIGHT FUNCTIONALITY
 # gd = GridOptionsBuilder.from_dataframe(leaderboard_display_df.to_pandas())
@@ -56,7 +65,7 @@ if leaderboard_display_df.count() > 0:
       st.write(f"All golfers who miss the cut will reflect as __{cut_player_score}__ for scoring")
       st.write("")
       st.write('#### Selected Player Leaderboard')
-      st.dataframe(player_leaderboard_df[['POSITION','GOLFER','TOTAL','THRU','SELECTIONS']].to_pandas().set_index('POSITION'),height=825)
+      st.dataframe(player_leaderboard_df[['POSITION','GOLFER','TOTAL','THRU','SELECTIONS']].to_pandas().set_index('POSITION'),height=825) # type: ignore
 
 
 else:
