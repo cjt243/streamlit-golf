@@ -20,9 +20,11 @@ def get_data_from_snowflake(session: Session):
     player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
     player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
     last_refresh = session.table('SCOREBOARD').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
+    print("Successful try!")
     return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
   
   except exceptions.SnowparkSQLException:
+    print("Caught the pesky stale session!")
     session = get_session()
     get_data_from_snowflake(session)
     leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
