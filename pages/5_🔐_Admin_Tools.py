@@ -34,6 +34,8 @@ else:
 
         # Extract the tournament name
         tournament_name = response.json()["event_name"]
+        st.write('##### Copy for Event Name in Secrets Config')
+        st.code(tournament_name)
 
         # produce a ranked dataframe of players for picking
         pre_tourney_golfers = response.json()["baseline_history_fit"]
@@ -110,3 +112,9 @@ else:
 
         except KeyError:
             st.write('No Selections Made')
+    
+    with st.expander('Set Cut Line'):
+        cut = int(st.number_input('Set cut line: ',value=0))
+        if st.button('Update Cut'):
+            session.table('GOLF_NEW.RAW.TOURNAMENTS').update({'CUT': cut},F.col('TOURNAMENT') == tournament_name)
+        st.dataframe(session.table('GOLF_NEW.RAW.TOURNAMENTS').filter(F.col('TOURNAMENT') == tournament_name))
