@@ -14,7 +14,7 @@ with st.spinner('Checking the trophy room!'):
 
     st.write("## 🥇 Winner's Circle")
     winners_circle_df = session.table('winners_circle_vw').to_pandas()
-    winners_circle_df['TOURNAMENT'].replace({'The Masters': 'The Masters 🏅',
+    winners_circle_df['TOURNAMENT'].replace({'Masters Tournament': 'Masters Tournament 🏅',
                                              'PGA Championship': 'PGA Championship 🏅',
                                              'U.S. Open': 'U.S. Open 🏅',
                                              'The Open Championship': 'The Open Championship 🏅'}, inplace=True)
