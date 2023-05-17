@@ -1,6 +1,7 @@
 altair
 streamlit==1.17.0
 snowflake-snowpark-python[pandas]
+pandas==1.5.3
 plotly
 cffi==1.15.1
 streamlit-aggrid==0.3.3
