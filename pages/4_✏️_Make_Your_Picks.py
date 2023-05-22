@@ -4,7 +4,7 @@ import pandas as pd
 from snowflake.snowpark import Session, functions as F
 import logging
 
-@st.cache(ttl=300)
+@st.cache_resource(ttl=300)
 def get_pick_options() -> pd.DataFrame:
   df = session.table('GOLF_NEW.RAW.PICK_OPTIONS').to_pandas()
   return pd.DataFrame(df)

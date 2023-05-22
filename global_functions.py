@@ -2,7 +2,7 @@ import streamlit as st
 from snowflake.snowpark import Session
 import pandas as pd
 
-@st.experimental_singleton # magic to cache db connection
+@st.cache_resource # magic to cache db connection
 def create_connection() -> Session:
     connection_parameters = {
         "account": st.secrets["account"],
