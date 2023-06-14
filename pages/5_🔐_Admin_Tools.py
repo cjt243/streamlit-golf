@@ -81,40 +81,21 @@ else:
         unconfirmed_entries_df = session.table('GOLF_NEW.RAW.POOL_STAGING').to_pandas()
         unconfirmed_entries_df.insert(loc=1,column='MEMBER_ID',value=pd.Series(dtype='int'))
 
-        # The code below is for the title and logo.
-        # st.info("💡 Hold the `Shift` (⇧) key to select multiple rows at once.")
-        st.caption("")
-        gd = GridOptionsBuilder.from_dataframe(unconfirmed_entries_df)
-        gd.configure_pagination(enabled=True)
-        gd.configure_default_column(editable=True, groupable=True)
-        gd.configure_selection(selection_mode="multiple", use_checkbox=True)
-        gridoptions = gd.build()
-        grid_table = AgGrid(
-            unconfirmed_entries_df,
-            gridOptions=gridoptions,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            theme="streamlit",
-        )
-
         st.dataframe(member_reference_df)
-        sel_row = grid_table["selected_rows"]
-
-        st.write("")
-
-        try:
-            df_sel_row = pd.DataFrame(sel_row)
-            validated_df = df_sel_row[['ENTRY_NAME','MEMBER_ID','GOLFER_1','GOLFER_2','GOLFER_3','GOLFER_4','GOLFER_5','TOURNAMENT']]
-            st.dataframe(validated_df)
-
-            if st.button('Insert Validated Pool Entries'):
-                with st.spinner('Adding entries to Pool'):
-                    session.write_pandas(validated_df,'POOL',schema='RAW',database='GOLF_NEW',overwrite=False)
-
-        except KeyError:
-            st.write('No Selections Made')
+        validated_df = st.experimental_data_editor(unconfirmed_entries_df)
+        
+        st.write('Staged Records: ')
+        st.dataframe(validated_df.loc[validated_df['MEMBER_ID'] >= 0])
+        if st.button('Insert Entries'):
+            session.write_pandas(validated_df.loc[validated_df['MEMBER_ID'] >= 0],'POOL',schema='RAW',database='GOLF_NEW',overwrite=False)
+        st.write('Existing Entries')
+        st.dataframe(session.table('GOLF_NEW.RAW.POOL').filter(F.col('TOURNAMENT') == tournament_name))
     
     with st.expander('Set Cut Line'):
-        cut = int(st.number_input('Set cut line: ',value=0))
+        edited_df = st.experimental_data_editor(session.table('GOLF_NEW.RAW.TOURNAMENTS').filter(F.col('TOURNAMENT') == tournament_name).to_pandas()[['TOURNAMENT','CUT']])
         if st.button('Update Cut'):
-            session.table('GOLF_NEW.RAW.TOURNAMENTS').update({'CUT': cut},F.col('TOURNAMENT') == tournament_name)
-        st.dataframe(session.table('GOLF_NEW.RAW.TOURNAMENTS').filter(F.col('TOURNAMENT') == tournament_name))
+            session.table('GOLF_NEW.RAW.TOURNAMENTS').update({'CUT': int(edited_df['CUT'][0])},F.col('TOURNAMENT') == tournament_name)
+            if int(session.table('GOLF_NEW.RAW.TOURNAMENTS').filter(F.col('TOURNAMENT') == tournament_name).to_pandas()['CUT'][0]) == int(edited_df['CUT'][0]):
+                st.write('Cut Successfully Updated')
+            else:
+                st.write('Cut Not Updated Yet')
