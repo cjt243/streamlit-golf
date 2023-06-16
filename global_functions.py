@@ -20,7 +20,7 @@ def create_connection() -> Session:
 def validate_session():
     try:
         session = st.session_state['snowpark_session']
-        session.sql('select 1;')
+        session.sql('select 1;').collect()
     except:
         return False
     return True
