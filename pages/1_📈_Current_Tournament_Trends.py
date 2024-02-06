@@ -1,5 +1,5 @@
 import streamlit as st
-from global_functions import get_session
+from global_functions import get_session, get_active_tournament
 from snowflake.snowpark import functions as F
 import plotly.express as px
 import altair as alt
@@ -7,17 +7,13 @@ import pandas as pd
 
 session = get_session()
 
+tournament = get_active_tournament(session)
 
-
-
-tournament = st.secrets["current_event"]
 st.title(tournament)
 
 golfer_line_df = session.table('GOLFER_TIME_SERIES_VW').filter(F.col("TOURNAMENT") == tournament)
 member_line_df = golfer_line_df.group_by(F.col('ENTRY_NAME'),F.col('LAST_UPDATED')).agg(F.sum(F.col('TOTAL'))).with_column_renamed(F.col('SUM(TOTAL)'),'TOTAL')
 
-
-# player_trend_df = tourney_df[["PLAYER","SCORE","UPDATED","THRU"]].fillna(0).sort_values(by=['PLAYER','UPDATED'], ascending= [0,0])
 
 pool_trend_local_df = member_line_df.to_pandas().sort_values(by=['ENTRY_NAME','LAST_UPDATED'] , ascending=True)
 

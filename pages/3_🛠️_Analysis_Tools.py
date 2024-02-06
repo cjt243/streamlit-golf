@@ -1,5 +1,5 @@
 import streamlit as st
-from global_functions import get_session
+from global_functions import get_session, get_active_tournament
 import pandas as pd
 from snowflake.snowpark import Session, functions as F
 import logging
@@ -16,7 +16,7 @@ def convert_to_int(x):
     return 18
 
 session = get_session()
-tournament = st.secrets["current_event"]
+tournament = get_active_tournament(session)
 
 st.title('🛠️ Analysis Tools')
 
@@ -24,7 +24,7 @@ tab1,tab2,tab3 = st.tabs(["Matchup Analysis", "Golfer History","Member Performan
 
 with tab1:
   st.write(f'### {tournament}')
-  picks_df = session.table('TOURNEY_PICK_DETAIL_VW').to_pandas().set_index('POSITION')
+  picks_df = session.table('TOURNEY_PICK_DETAIL_VW').filter(F.col('TOURNAMENT') == tournament).to_pandas().set_index('POSITION')
 
   entries = picks_df['ENTRY_NAME'].drop_duplicates().to_list()
   col1, col2 = st.columns(2)

@@ -1,12 +1,12 @@
 import streamlit as st
-from global_functions import get_session
+from global_functions import get_session, get_active_tournament
 import pandas as pd
 from snowflake.snowpark import Session, functions as F
 import logging
 
 @st.cache_resource(ttl=300)
 def get_pick_options() -> pd.DataFrame:
-  df = session.table('GOLF_NEW.RAW.PICK_OPTIONS').to_pandas()
+  df = session.table('GOLF_LEAGUE.ANALYTICS.PICK_OPTIONS').to_pandas()
   return pd.DataFrame(df)
 
 session = get_session()
@@ -26,7 +26,7 @@ else:
     second = pick_list[5:16]
     third = pick_list[16:]
 
-    tournament = st.secrets['current_event']
+    tournament = get_active_tournament(session)
 
     # 
     st.title(f"Picks for {tournament}")
@@ -59,7 +59,7 @@ else:
                     "TOURNAMENT": [tournament] 
                   }
                 )
-                ,'POOL_STAGING',database='GOLF_NEW',schema='RAW',overwrite=False)
+                ,'POOL_STAGING',database='GOLF_LEAGUE',schema='ANALYTICS',overwrite=False)
 
               st.write("✅ Submit Successful!")
               st.write("Hit the copy button below to transfer your picks to a note")
