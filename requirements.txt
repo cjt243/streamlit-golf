@@ -1,6 +1,7 @@
 altair
-streamlit==1.22.0
-snowflake-snowpark-python[pandas]
+cron_descriptor
+streamlit==1.29.0
+snowflake-snowpark-python[pandas]==1.6.1
+pandas==1.5.3
 plotly
 cffi==1.15.1
-streamlit-aggrid==0.3.3
