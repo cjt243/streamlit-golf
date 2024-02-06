@@ -2,33 +2,23 @@ import pandas as pd
 import streamlit as st
 from snowflake.snowpark import Session, exceptions
 import plotly.express as px
-from global_functions import get_session
+from global_functions import get_session, get_active_tournament
 from snowflake.snowpark import functions as F
-from datetime import datetime
-from st_aggrid import AgGrid, GridUpdateMode
-from st_aggrid.grid_options_builder import GridOptionsBuilder
+from datetime import datetime, timedelta
 
-tournament = st.secrets['current_event']
 
 session = get_session()
 
+tournament = get_active_tournament(session)
+
 def get_data_from_snowflake(session: Session):
-  try:
-    leaderboard_display_df = session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT'])
-    picks_df = session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]]
-    selection_df = picks_df.group_by(F.col("GOLFER")).agg(F.count("ENTRY_NAME")).with_column_renamed(F.col("COUNT(ENTRY_NAME)"),"SELECTIONS")  # type: ignore
-    player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
-    player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
-    last_refresh = session.table('SCOREBOARD').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
-    print("Successful try!")
-    return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
-  
-  except exceptions.SnowparkSQLException:
-    print("Caught the pesky stale session!")
-    session = get_session()
-    get_data_from_snowflake(session)
-    leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
-    return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
+  leaderboard_display_df = session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT'])
+  picks_df = session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]]
+  selection_df = picks_df.group_by(F.col("GOLFER")).agg(F.count("ENTRY_NAME")).with_column_renamed(F.col("COUNT(ENTRY_NAME)"),"SELECTIONS")  # type: ignore
+  player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
+  player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
+  last_refresh = session.table('LIVE_TOURNAMENT_STATS_FACT').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
+  return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
 
 st.write(f"# {tournament}")
 
@@ -36,21 +26,8 @@ st.write(f"# {tournament}")
 leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
 
 
-# PROTOTYPE FOR SELECT AND HIGHLIGHT FUNCTIONALITY
-# gd = GridOptionsBuilder.from_dataframe(leaderboard_display_df.to_pandas())
-# gd.configure_pagination(enabled=True)
-# gd.configure_default_column(editable=True, groupable=True)
-# gd.configure_selection(selection_mode="single", use_checkbox=True)
-# gridoptions = gd.build()
-# grid_table = AgGrid(
-#     leaderboard_display_df.to_pandas(),
-#     gridOptions=gridoptions,
-#     update_mode=GridUpdateMode.SELECTION_CHANGED,
-#     theme="streamlit",
-# )
-
 try:
-  tournament_cut_line = int(session.table('tournaments_vw').filter(F.col("TOURNAMENT") == tournament).collect()[0][2]) # type: ignore
+  tournament_cut_line = int(session.table('tournaments').filter(F.col("event") == tournament).collect()[0][2]) # type: ignore
   cut_player_score = tournament_cut_line + 1
 except TypeError:
   tournament_cut_line = 'TBD'
@@ -59,7 +36,7 @@ except TypeError:
 if leaderboard_display_df.count() > 0:
   with st.spinner('Getting yardages...'):
       st.write('#### Member Leaderboard')
-      st.write(f"""```{last_refresh.collect()[0][0].strftime("%A %b %d %I:%M %p")}```""")
+      st.write(f"""```{(last_refresh.collect()[0][0] + timedelta(hours=1)).strftime("%A %b %d %I:%M %p")} EST```""") # type: ignore
       leaderboard_display = leaderboard_display_df.to_pandas()
       leaderboard_display['SELECTIONS'] = leaderboard_display['SELECTIONS'].apply(lambda x: [sel.strip() for sel in x.split(",")])
       st.dataframe(leaderboard_display.set_index('RANK'))

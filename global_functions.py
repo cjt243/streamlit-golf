@@ -1,26 +1,18 @@
 import streamlit as st
 from snowflake.snowpark import Session
+import snowflake.snowpark.functions as F
 import pandas as pd
 
-@st.experimental_singleton # magic to cache db connection
+@st.cache_resource()
 def create_connection() -> Session:
-    connection_parameters = {
-        "account": st.secrets["account"],
-        "user": st.secrets["user"],
-        "password": st.secrets["password"],
-        "role": st.secrets["role"],
-        "warehouse": st.secrets["warehouse"],
-        "database": st.secrets["database"],
-        "schema": st.secrets["schema"]
-        }
-
-    session = Session.builder.configs(connection_parameters).create()
-    return session
+    conn = st.connection("snowflake")
+    return conn.session()
+    
 
 def validate_session():
     try:
         session = st.session_state['snowpark_session']
-        session.sql('select 1;').collect()
+        session.get_current_warehouse()
     except:
         return False
     return True
@@ -65,3 +57,7 @@ def check_password() -> bool:
     else:
         # Password correct.
         return True
+
+def get_active_tournament(session: Session):
+    active_tournament = session.table('GOLF_LEAGUE.ANALYTICS.TOURNAMENTS').filter((F.col('TOURNAMENT_COMPLETE') == False) & (F.col('ACTIVE_TOURNAMENT') == True)).limit(1)
+    return active_tournament.select("EVENT").collect()[0][0]
