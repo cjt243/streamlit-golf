@@ -27,7 +27,7 @@ leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,las
 
 
 try:
-  tournament_cut_line = int(session.table('tournaments').filter(F.col("event") == tournament).collect()[0][2]) # type: ignore
+  tournament_cut_line = int(session.table('tournaments').filter(F.col("event") == tournament).select('CUT').collect()[0][0]) # type: ignore
   cut_player_score = tournament_cut_line + 1
 except TypeError:
   tournament_cut_line = 'TBD'
@@ -36,7 +36,7 @@ except TypeError:
 if leaderboard_display_df.count() > 0:
   with st.spinner('Getting yardages...'):
       st.write('#### Member Leaderboard')
-      st.write(f"""```{(last_refresh.collect()[0][0] + timedelta(hours=-4)).strftime("%A %b %d %I:%M %p")} EST```""") # type: ignore
+      st.write(f"""```{(last_refresh.collect()[0][0] + timedelta(hours=-5)).strftime("%A %b %d %I:%M %p")} EST```""") # type: ignore
       leaderboard_display = leaderboard_display_df.to_pandas()
       leaderboard_display['SELECTIONS'] = leaderboard_display['SELECTIONS'].apply(lambda x: [sel.strip() for sel in x.split(",")])
       st.dataframe(leaderboard_display.set_index('RANK'))
