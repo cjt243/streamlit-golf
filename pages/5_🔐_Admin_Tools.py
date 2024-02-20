@@ -57,7 +57,7 @@ else:
 
     with tab2:
         member_reference_df = session.table('GOLF_LEAGUE.ANALYTICS.MEMBERS').to_pandas()
-        unconfirmed_entries_df = session.table('GOLF_LEAGUE.ANALYTICS.POOL_STAGING').to_pandas()
+        unconfirmed_entries_df = session.table('GOLF_LEAGUE.ANALYTICS.POOL_STAGING').filter(F.col('TOURNAMENT') == active_tournament).to_pandas()
         unconfirmed_entries_df.insert(loc=1,column='MEMBER_ID',value=pd.Series(dtype='int'))
 
         st.write('Member Reference')
