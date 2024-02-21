@@ -25,7 +25,7 @@ fig1 = px.line(
     y="TOTAL",
     color="ENTRY_NAME",
     markers=False,
-    hover_data=["ENTRY_NAME","TOTAL","LAST_UPDATED"]       
+    hover_data=["ENTRY_NAME","TOTAL","LAST_UPDATED"]
 )
 fig1.update_layout(
     xaxis = dict(

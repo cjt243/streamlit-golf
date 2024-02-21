@@ -5,3 +5,4 @@ snowflake-snowpark-python[pandas]==1.6.1
 pandas==1.5.3
 plotly
 cffi==1.15.1
+st-pages

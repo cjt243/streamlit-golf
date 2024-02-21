@@ -1,10 +1,25 @@
 import pandas as pd
 import streamlit as st
 from snowflake.snowpark import Session, exceptions
+from st_pages import Page, show_pages
 import plotly.express as px
 from global_functions import get_session, get_active_tournament
 from snowflake.snowpark import functions as F
 from datetime import datetime, timedelta
+
+# Define your pages
+pages = [
+    Page("Home_Leaderboard.py", "Leaderboard", "🏠"),
+    Page("pages/1_📈_Current_Tournament_Trends.py"),
+    Page("pages/2_🏆_Trophy_Room.py"),
+    Page("pages/3_🛠️_Analysis_Tools.py"),
+    Page("pages/4_✏️_Make_Your_Picks.py"),
+    Page("pages/5_🔐_Admin_Tools.py"),
+    Page("pages/6_🔄_App Status.py"),
+]
+
+# Display the pages in the sidebar
+show_pages(pages)
 
 
 session = get_session()
@@ -49,4 +64,4 @@ if leaderboard_display_df.count() > 0:
 
 else:
   st.write(f"Whoops...the players are still warming up! {tournament} hasn't started yet...come back later!")
-  st.image('assets/tiger-woods-gif.gif')
+  st.image('assets/scottie.gif',use_column_width=True)
