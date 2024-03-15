@@ -7,10 +7,10 @@ This Streamlit application is designed for managing and visualizing data for a G
 ## Features
 
 - **Dynamic Leaderboard**: Displays the current standings of league members based on the ongoing tournament results.
-- **Tournament Trends**: Analyzes and visualizes trends from the current tournament, helping users to make strategic picks.
+- **Tournament Trends**: Visualizes the score trendline for each team across a tournament.
 - **Trophy Room**: Showcases past winners and their winning scores, celebrating the history and achievements within the league.
 - **Analysis Tools**: Offers various tools for deeper analysis of player performances and tournament statistics.
-- **Make Your Picks**: Allows users to select their team for upcoming tournaments, with insights on player selections and performance.
+- **Make Your Picks**: Allows users to select their team for upcoming tournaments.
 - **Admin Tools**: Provides administrative functionalities to manage the league, tournaments, and user access.
 - **App Status**: Displays the current status of the app, including the last data refresh time and any maintenance notices.
 
