@@ -24,15 +24,17 @@ show_pages(pages)
 session = get_session()
 
 tournament = get_active_tournament(session)
+# tournament = 'THE PLAYERS Championship'
 
-def get_data_from_snowflake(session: Session):
-  leaderboard_display_df = session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT'])
-  picks_df = session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]]
-  selection_df = picks_df.group_by(F.col("GOLFER")).agg(F.count("ENTRY_NAME")).with_column_renamed(F.col("COUNT(ENTRY_NAME)"),"SELECTIONS")  # type: ignore
-  player_df = session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament)
-  player_leaderboard_df = selection_df.join(player_df,F.col("FULL_NAME") == F.col("GOLFER"))
-  last_refresh = session.table('LIVE_TOURNAMENT_STATS_FACT').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED"))
-  return leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh
+@st.cache_data(ttl=240)
+def get_data_from_snowflake(_session: Session, tournament: str):
+  leaderboard_display_df = _session.table('leaderboard_display_vw').filter(F.col('TOURNAMENT') == tournament).drop(['TOURNAMENT']).to_pandas()
+  picks_df = _session.table('POOL_COLUMNAR_VW').filter(F.col('TOURNAMENT') == tournament)[["ENTRY_NAME","GOLFER"]].to_pandas()
+  selection_df = picks_df.groupby("GOLFER").agg({'ENTRY_NAME': 'count'}).rename(columns={'ENTRY_NAME': 'SELECTIONS'}).reset_index()
+  player_df = _session.table('PLAYER_LEADERBOARD_VW').filter(F.col('EVENT_NAME') == tournament).to_pandas()
+  player_leaderboard_df = selection_df.merge(player_df, left_on="GOLFER", right_on="FULL_NAME")
+  last_refresh = _session.table('LIVE_TOURNAMENT_STATS_FACT').filter(F.col('EVENT_NAME') == tournament).distinct().agg(F.max("LAST_UPDATED")).collect()[0][0]
+  return leaderboard_display_df, picks_df, selection_df, player_df, player_leaderboard_df, last_refresh
 
 def highlight_golfers(row, selected_golfers):
     return ['background-color: green' if golfer in selected_golfers else '' for golfer in row]
@@ -40,7 +42,7 @@ def highlight_golfers(row, selected_golfers):
 st.write(f"# {tournament}")
 
 # create Snowpark Dataframes
-leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session)
+leaderboard_display_df,picks_df,selection_df,player_df,player_leaderboard_df,last_refresh = get_data_from_snowflake(session, tournament)
 
 
 try:
@@ -50,30 +52,30 @@ except TypeError:
   tournament_cut_line = 'TBD'
   cut_player_score = 'TBD'
 
-if leaderboard_display_df.count() > 0:
+if not leaderboard_display_df.empty:
   with st.spinner('Getting yardages...'):
       st.write('#### Member Leaderboard')
-      st.write(f"""```{(last_refresh.collect()[0][0] + timedelta(hours=-4)).strftime("%A %b %d %I:%M %p")} EST```""") # type: ignore
+      st.write(f"""```{(last_refresh + timedelta(hours=-4)).strftime("%A %b %d %I:%M %p")} EST```""")
 
-      leaderboard_display = leaderboard_display_df.to_pandas()
+      leaderboard_display = leaderboard_display_df
       leaderboard_display['SELECTIONS'] = leaderboard_display['SELECTIONS'].apply(lambda x: [sel.strip() for sel in x.split(",")])
       st.dataframe(leaderboard_display.set_index('RANK'))
       st.write(f"#### Cut = {tournament_cut_line}")
       st.write(f"All golfers who miss the cut will reflect as __{cut_player_score}__ for scoring")
       st.write("")
-      member_names = picks_df.to_pandas()['ENTRY_NAME'].drop_duplicates().tolist()
+      member_names = picks_df['ENTRY_NAME'].drop_duplicates().tolist()
       selected_member = st.selectbox('Select a Member:', member_names)
 
       if selected_member:
-        selected_golfers = picks_df[picks_df['ENTRY_NAME'] == selected_member].to_pandas()['GOLFER'].to_list()
+        selected_golfers = picks_df[picks_df['ENTRY_NAME'] == selected_member]['GOLFER'].to_list()
 
-      player_leaderboard_df_styled = player_leaderboard_df[['POSITION','GOLFER','TOTAL','THRU','SELECTIONS']].to_pandas().style.apply(highlight_golfers, selected_golfers=selected_golfers, axis=1)
+      player_leaderboard_df_styled = player_leaderboard_df[['POSITION','GOLFER','TOTAL','THRU','SELECTIONS']].sort_values('TOTAL', ascending=True).style.apply(highlight_golfers, selected_golfers=selected_golfers, axis=1)
 
       # make sure all numbers are formatted as integers in player_leaderboard_df_styled
       player_leaderboard_df_styled = player_leaderboard_df_styled.format({'TOTAL': '{:,.0f}','THRU': '{:,.0f}'})
       
       st.write('#### Selected Player Leaderboard')
-      st.dataframe(player_leaderboard_df_styled,height=825) # type: ignore
+      st.dataframe(player_leaderboard_df_styled,hide_index=True, height=825) # type: ignore
 
 
 else:
